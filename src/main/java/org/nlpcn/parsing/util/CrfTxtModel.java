@@ -4,6 +4,7 @@ import org.nlpcn.commons.lang.util.IOUtil;
 import org.nlpcn.commons.lang.util.StringUtil;
 import org.nlpcn.commons.lang.util.logging.Log;
 import org.nlpcn.commons.lang.util.logging.LogFactory;
+import org.nlpcn.commons.lang.util.tuples.Triplet;
 import org.nlpcn.parsing.domain.Feature;
 
 import java.io.*;
@@ -71,6 +72,7 @@ public class CrfTxtModel implements Serializable {
 			}
 		}
 
+		List<Triplet<Integer, Integer, Float>> bigram = new ArrayList<>();
 
 		try (BufferedReader reader = IOUtil.getReader(path, "utf-8")) {
 
@@ -80,6 +82,8 @@ public class CrfTxtModel implements Serializable {
 				if (StringUtil.isBlank(temp)) {
 					continue;
 				}
+
+
 				String[] split = temp.split("\t");
 				String feature = split[0];
 				String tag = split[2];
@@ -96,6 +100,16 @@ public class CrfTxtModel implements Serializable {
 					char[] chars = feature.toCharArray();
 					chars[0] = Character.toUpperCase(chars[0]);
 					feature = new String(chars);
+				} else if ("b".equals(feature)) { //级联特征
+					String tagF = split[1];
+					String tagT = tag;
+					tempIndex = model.tagIndex.get(tagF);
+					if (tempIndex == null) {
+						tempIndex = ++index;
+						model.tagIndex.put(tag, tempIndex);
+					}
+					bigram.add(Triplet.with(model.tagIndex.get(tagF), model.tagIndex.get(tagT), weight)) ;
+					continue;
 				}
 
 				float[] floats = model.features.get(feature);
@@ -112,9 +126,14 @@ public class CrfTxtModel implements Serializable {
 			for (float[] floats : model.features.values()) {
 				Arrays.parallelSort(floats);
 			}
-
-
 		}
+
+		model.bigramFeature = new float[model.tagIndex.size()][model.tagIndex.size()];
+
+		for (Triplet<Integer, Integer, Float> triplet : bigram) {
+			model.bigramFeature[triplet.getValue0()][triplet.getValue1()] = triplet.getValue2();
+		}
+
 		LOG.info("read modle ok use time : " + (System.currentTimeMillis() - start));
 
 		return model;

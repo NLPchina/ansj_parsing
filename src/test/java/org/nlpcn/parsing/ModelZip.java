@@ -11,9 +11,10 @@ import java.io.IOException;
 public class ModelZip {
 
 	@Test
-	public void zipModel() throws IOException, ClassNotFoundException {
-		CrfTxtModel model = CrfTxtModel.load("corpus/pos.model.txt");
+	public void zipModel() throws Exception {
+		CrfTxtModel model = CrfTxtModel.load("corpus/pattern.txt","corpus/pos.model.txt");
 		model.writeZipModel("src/main/resources/pos.model");
+		new POSTaggingTest().accuracyate();
 	}
 
 	@Test
